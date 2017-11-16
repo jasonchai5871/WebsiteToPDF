@@ -1,0 +1,21 @@
+{
+  "name": "Website to PDF",
+  "version": "1.12",
+  "manifest_version": 2,
+  "description": "Convert Website to PDF.",
+  "permissions": [
+    "https://pdfcrowd.com/*"
+  ],
+
+ "browser_action": {
+     "default_icon": "icons/icon19.png"
+ },
+
+
+ "icons": { "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png" },
+
+ "background" : { "page": "background.html" }
+
+}
