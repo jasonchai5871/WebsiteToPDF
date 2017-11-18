@@ -1,4 +1,8 @@
 
+var logo;
+var logoContext;
+var image;
+var logoanimation = new Animation();
 var pdfCrowdUrl = 'https://pdfcrowd.com';
 var PDFapiUrl = {
     1: pdfCrowdUrl + '/session/json/convert/uri/',
@@ -6,6 +10,77 @@ var PDFapiUrl = {
 };
 
 var apiVersionUrl = pdfCrowdUrl + '/session/api-version/';
+
+
+function Animation() {
+    this.imgRefreshTimer_ = 0;
+    this.imgMovePosition_ = 0;
+}
+
+
+Animation.prototype.paintFrame = function() {
+    logoContext.save();
+
+    
+    var h = logo.height - 6;
+    var w = logo.width - this.imgMovePosition_;
+
+    logoContext.drawImage(image, 0, 0);
+    logoContext.drawImage(image, 0, 3, w, h, this.imgMovePosition_, 3, w, h);
+    
+    if (this.imgMovePosition_) {
+        logoContext.drawImage(
+            image, 0, 3, logo.width, h, -logo.width + this.imgMovePosition_, 3, logo.width, h);
+    }
+      
+    logoContext.restore();
+    
+    chrome.browserAction.setIcon({imageData: logoContext.getImageData(0, 0, logo.width, logo.height)});
+    this.imgMovePosition_ += 1;
+    
+    if (this.imgMovePosition_ >= logo.width)
+        this.imgMovePosition_ = 0;
+}
+
+
+Animation.prototype.start = function() {
+    if (this.imgRefreshTimer_)
+        return;
+    
+    var self = this;
+    this.imgRefreshTimer_ = window.setInterval(function () {
+        self.paintFrame();
+    }, 10);
+}
+
+
+Animation.prototype.stop = function() {
+    if (!this.imgRefreshTimer_)
+        return;
+    window.clearInterval(this.imgRefreshTimer_);
+    this.imgRefreshTimer_ = 0;
+    this.imgMovePosition_ = 0;
+    showStaticIcon();
+}
+
+
+function showStaticIcon() {
+    if (logoanimation.imgRefreshTimer_ != 0) return;
+    logoContext.drawImage(image, 0, 0);
+    drawLoggedIn();
+    chrome.browserAction.setIcon({imageData: logoContext.getImageData(0, 0, logo.width, logo.height)});
+}
+
+
+function drawLoggedIn() {
+
+    logoContext.save();
+    logoContext.fillStyle = "green";
+    logoContext.arc(15, 4, 4, 0, 2*Math.PI);
+    logoContext.fill();
+    logoContext.restore();
+}
+
 
 
 function onDataReady(XMLrequest, callbacks) {
@@ -40,18 +115,19 @@ function convertToPDF(tab, apiUrl) {
             if (data.status === 'ok') {
                 chrome.tabs.update(tab.id, {url: data.url});
 	        } else if (data.status === 'error') {
-	
+	            alert("Convert Fail!");
             } else if (data.status === 'redirect') {
-  
-        }
+                alert("Convert Fail!");
+            }
 
         },
        
         onError: function(responseText) {
-
+            alert("Convert Fail!");
         },
 
         onComplete: function() { 
+            logoanimation.stop(); 
         }
     });
 
@@ -61,9 +137,18 @@ function convertToPDF(tab, apiUrl) {
 };
 
 
+function init() {
+
+    image = document.getElementById("standard_icon")
+    logo = document.getElementById("canvas");
+    logoContext = logo.getContext("2d");
+
+}
+
 
 chrome.browserAction.onClicked.addListener(function (tab) {
 
+    logoanimation.start();
 
     var XMLrequest = new XMLHttpRequest();
     XMLrequest.onreadystatechange = onDataReady(XMLrequest, {
@@ -77,9 +162,11 @@ chrome.browserAction.onClicked.addListener(function (tab) {
         },
         onError: function(responseText) {
             showError("Fail connect to Pdfcrowd");
+            animation.stop();
         },
     });
     XMLrequest.open('GET', apiVersionUrl, true);
     XMLrequest.send(null);
 });
 
+init();
